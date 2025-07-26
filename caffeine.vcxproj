@@ -19,11 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="gl_context\gl_context.cpp" />
     <ClCompile Include="imgui.cpp" />
     <ClCompile Include="imgui_draw.cpp" />
     <ClCompile Include="imgui_impl_opengl3.cpp" />
     <ClCompile Include="imgui_impl_sdl3.cpp" />
     <ClCompile Include="imgui_tables.cpp" />
+    <ClCompile Include="imgui-toggle\imgui_toggle.cpp" />
+    <ClCompile Include="imgui-toggle\imgui_toggle_palette.cpp" />
+    <ClCompile Include="imgui-toggle\imgui_toggle_presets.cpp" />
+    <ClCompile Include="imgui-toggle\imgui_toggle_renderer.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -37,12 +42,19 @@
     <None Include="SDL3.dll" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="gl_context\gl_context.h" />
     <ClInclude Include="imconfig.h" />
     <ClInclude Include="imgui.h" />
     <ClInclude Include="imgui_impl_opengl3.h" />
     <ClInclude Include="imgui_impl_opengl3_loader.h" />
     <ClInclude Include="imgui_impl_sdl3.h" />
     <ClInclude Include="imgui_internal.h" />
+    <ClInclude Include="imgui-toggle\imgui_offset_rect.h" />
+    <ClInclude Include="imgui-toggle\imgui_toggle.h" />
+    <ClInclude Include="imgui-toggle\imgui_toggle_math.h" />
+    <ClInclude Include="imgui-toggle\imgui_toggle_palette.h" />
+    <ClInclude Include="imgui-toggle\imgui_toggle_presets.h" />
+    <ClInclude Include="imgui-toggle\imgui_toggle_renderer.h" />
     <ClInclude Include="imstb_rectpack.h" />
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
@@ -131,13 +143,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\almaz\Desktop\SDK\SDL3-3.2.18\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\almaz\Desktop\PROJECTS\C++\caffeine\SDL3-3.2.18\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\almaz\Desktop\SDK\SDL3-3.2.18\lib\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;C:\Users\almaz\Desktop\SDK\SDL3-3.2.18\lib\x64\SDL3.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\almaz\Desktop\PROJECTS\C++\caffeine\SDL3-3.2.18\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;C:\Users\almaz\Desktop\PROJECTS\C++\caffeine\SDL3-3.2.18\lib\x64\SDL3.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

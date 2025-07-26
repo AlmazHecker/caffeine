@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\imgui-toggle">
+      <UniqueIdentifier>{e7934171-2f6b-4529-ad7e-7eebf3c0e2bc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -36,6 +39,21 @@
     <ClCompile Include="imgui_tables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="gl_context\gl_context.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui-toggle\imgui_toggle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui-toggle\imgui_toggle_palette.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui-toggle\imgui_toggle_presets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui-toggle\imgui_toggle_renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="build_win32.bat">
@@ -47,8 +65,8 @@
     <None Include="CppProperties.json" />
     <None Include="Makefile" />
     <None Include="README.md" />
-    <None Include="SDL3.dll" />
     <None Include=".gitignore" />
+    <None Include="SDL3.dll" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imconfig.h">
@@ -76,6 +94,27 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imstb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gl_context\gl_context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_offset_rect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_toggle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_toggle_math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_toggle_palette.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_toggle_presets.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-toggle\imgui_toggle_renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

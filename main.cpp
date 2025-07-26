@@ -1,226 +1,325 @@
-// Dear ImGui: standalone example application for SDL3 + OpenGL
-// (SDL is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
+﻿// Caffeine App: Prevents PC from sleeping with beautiful animations
+// Based on Dear ImGui + SDL3 + OpenGL
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
 #include <SDL3/SDL.h>
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-#include <SDL3/SDL_opengles2.h>
-#else
+#include "imgui-toggle/imgui_toggle.h"
+#include "gl_context/gl_context.h"
 #include <SDL3/SDL_opengl.h>
-#endif
+#include <cmath>
 
-#ifdef __EMSCRIPTEN__
-#include "../libs/emscripten/emscripten_mainloop_stub.h"
-#endif
+// Animation state
+struct AnimationState {
+    float fadeAlpha = 0.0f;
+    float pulseScale = 1.0f;
+    float glowIntensity = 0.0f;
+    float messageTimer = 0.0f;
+    bool isAnimating = false;
+    bool lastToggleState = false;
+};
 
-// Main code
+// Easing function for smooth animations
+float easeInOutQuad(float t) {
+    return t < 0.5f ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+// Draw animated coffee cup icon
+void DrawCoffeeIcon(ImVec2 pos, float size, float alpha, bool isActive) {
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    // Coffee cup body
+    ImU32 cupColor = isActive ?
+        IM_COL32(139, 69, 19, (int)(255 * alpha)) :  // Brown when active
+        IM_COL32(100, 100, 100, (int)(255 * alpha)); // Gray when inactive
+
+    draw_list->AddRectFilled(
+        ImVec2(pos.x, pos.y + size * 0.3f),
+        ImVec2(pos.x + size * 0.6f, pos.y + size),
+        cupColor, size * 0.1f
+    );
+
+    // Coffee cup handle
+    draw_list->AddCircle(
+        ImVec2(pos.x + size * 0.7f, pos.y + size * 0.6f),
+        size * 0.15f, cupColor, 12, size * 0.03f
+    );
+
+    // Steam (only when active)
+    if (isActive) {
+        float steamAlpha = alpha * 0.7f;
+        ImU32 steamColor = IM_COL32(255, 255, 255, (int)(255 * steamAlpha));
+
+        float time = ImGui::GetTime();
+        float sharedPhase = time * 2.5f; // Shared phase for synchronization
+
+        // Steam consists of 3 vertical wavy lines rising above cup
+        for (int i = 0; i < 3; i++) {
+            float x = pos.x + size * 0.2f + i * size * 0.12f;
+            float baseY = pos.y + size * 0.2f;  // Lowered by 0.1 * size
+            float height = size * 0.4f;
+
+            const int segments = 20;
+            for (int seg = 0; seg < segments; seg++) {
+                float t0 = (float)seg / segments;
+                float t1 = (float)(seg + 1) / segments;
+
+                // Synchronized wave using sharedPhase, phase shifted by line index for slight delay
+                float wave0 = sin(sharedPhase + i * 0.5f + t0 * 3.14f * 2) * size * 0.02f; // increased amplitude
+                float wave1 = sin(sharedPhase + i * 0.5f + t1 * 3.14f * 2) * size * 0.02f;
+
+                ImVec2 p0 = ImVec2(x + wave0, baseY - height * t0);
+                ImVec2 p1 = ImVec2(x + wave1, baseY - height * t1);
+
+                float alphaSegment = steamAlpha * (1.0f - t1);
+
+                draw_list->AddLine(p0, p1, IM_COL32(255, 255, 255, (int)(255 * alphaSegment)), size * 0.03f); // thicker line
+            }
+        }
+    }
+
+
+}
+
+// Draw sleeping "Z" particles
+void DrawSleepParticles(ImVec2 center, float size, float alpha) {
+    if (alpha <= 0.0f) return;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImU32 zColor = IM_COL32(150, 150, 255, (int)(255 * alpha));
+
+    float time = ImGui::GetTime();
+
+    // Multiple floating Z's
+    for (int i = 0; i < 5; i++) {
+        float phase = i * 0.8f;
+        float floatOffset = sin(time * 2.0f + phase) * size * 0.3f;
+        float scaleVariation = 0.7f + 0.3f * sin(time * 1.5f + phase);
+
+        ImVec2 zPos = ImVec2(
+            center.x + cos(phase) * size * 0.8f,
+            center.y - size * 0.5f + floatOffset - i * size * 0.2f
+        );
+
+        float zSize = size * 0.15f * scaleVariation;
+
+        // Draw "Z" shape
+        ImVec2 p1 = ImVec2(zPos.x - zSize, zPos.y - zSize);
+        ImVec2 p2 = ImVec2(zPos.x + zSize, zPos.y - zSize);
+        ImVec2 p3 = ImVec2(zPos.x - zSize, zPos.y + zSize);
+        ImVec2 p4 = ImVec2(zPos.x + zSize, zPos.y + zSize);
+
+        draw_list->AddLine(p1, p2, zColor, zSize * 0.2f);
+        draw_list->AddLine(p2, p3, zColor, zSize * 0.2f);
+        draw_list->AddLine(p3, p4, zColor, zSize * 0.2f);
+    }
+}
+
 int main(int, char**)
 {
-    // Setup SDL
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be your SDL_AppInit() function]
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
-    {
-        printf("Error: SDL_Init(): %s\n", SDL_GetError());
-        return -1;
-    }
+    // Setup SDL and OpenGL
+    GLWindowContext ctx = InitGLWindow("Caffeine - Keep PC Awake", 400, 300);
 
-    // Decide GL+GLSL versions
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-    // GL ES 2.0 + GLSL 100 (WebGL 1.0)
-    const char* glsl_version = "#version 100";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#elif defined(IMGUI_IMPL_OPENGL_ES3)
-    // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
-    const char* glsl_version = "#version 300 es";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#elif defined(__APPLE__)
-    // GL 3.2 Core + GLSL 150
-    const char* glsl_version = "#version 150";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-#else
-    // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#endif
-
-    // Create window with graphics context
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale), (int)(720 * main_scale), window_flags);
-    if (window == nullptr)
-    {
-        printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
-        return -1;
-    }
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (gl_context == nullptr)
-    {
-        printf("Error: SDL_GL_CreateContext(): %s\n", SDL_GetError());
-        return -1;
-    }
-
-    SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
-    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    SDL_ShowWindow(window);
-
-    // Setup Dear ImGui context
+    // Setup Dear ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    // Setup Dear ImGui style
+    // Setup style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
-    // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+    style.ScaleAllSizes(ctx.scale);
+    style.FontScaleDpi = ctx.scale;
 
-    // Setup Platform/Renderer backends
-    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    // Customize colors for caffeine theme
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.1f, 0.12f, 1.0f);
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.2f, 0.1f, 0.05f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.3f, 0.15f, 0.08f, 1.0f);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
-    //style.FontSizeBase = 20.0f;
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
-    //IM_ASSERT(font != nullptr);
+    // Setup backends
+    ImGui_ImplSDL3_InitForOpenGL(ctx.window, ctx.context);
+    ImGui_ImplOpenGL3_Init(ctx.glsl_version);
 
-    // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    // App state
+    bool keepAwake = false;
+    AnimationState anim;
 
     // Main loop
     bool done = false;
-#ifdef __EMSCRIPTEN__
-    // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
-    // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
-    io.IniFilename = nullptr;
-    EMSCRIPTEN_MAINLOOP_BEGIN
-#else
     while (!done)
-#endif
     {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        // [If using SDL_MAIN_USE_CALLBACKS: call ImGui_ImplSDL3_ProcessEvent() from your SDL_AppEvent() function]
+        // Handle events
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT)
                 done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                event.window.windowID == SDL_GetWindowID(ctx.window))
                 done = true;
         }
 
-        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate() function]
-        if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)
+        if (SDL_GetWindowFlags(ctx.window) & SDL_WINDOW_MINIMIZED)
         {
             SDL_Delay(10);
             continue;
         }
 
-        // Start the Dear ImGui frame
+        // Start frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
+        // Check for toggle state change
+        if (keepAwake != anim.lastToggleState) {
+            anim.isAnimating = true;
+            anim.messageTimer = 0.0f;
+            anim.lastToggleState = keepAwake;
         }
 
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
+        // Update animations
+        float deltaTime = io.DeltaTime;
+        if (anim.isAnimating) {
+            anim.messageTimer += deltaTime;
+
+            // Fade in message
+            if (anim.messageTimer < 1.0f) {
+                anim.fadeAlpha = easeInOutQuad(anim.messageTimer);
+            }
+            else if (anim.messageTimer < 3.0f) {
+                anim.fadeAlpha = 1.0f;
+            }
+            else if (anim.messageTimer < 4.0f) {
+                anim.fadeAlpha = 1.0f - easeInOutQuad(anim.messageTimer - 3.0f);
+            }
+            else {
+                anim.isAnimating = false;
+                anim.fadeAlpha = 0.0f;
+            }
         }
+
+        // Pulse effect for active state
+        if (keepAwake) {
+            anim.pulseScale = 1.0f + 0.1f * sin(ImGui::GetTime() * 2.0f);
+            anim.glowIntensity = 0.5f + 0.3f * sin(ImGui::GetTime() * 1.5f);
+        }
+        else {
+            anim.pulseScale = 1.0f;
+            anim.glowIntensity = 0.0f;
+        }
+
+        // Main window
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGui::Begin("Caffeine", nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+
+        // Center content
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImVec2 center = ImVec2(windowSize.x * 0.5f, windowSize.y * 0.5f);
+
+        // Draw coffee icon
+        ImVec2 iconPos = ImVec2(center.x - 40, center.y - 100);
+        DrawCoffeeIcon(iconPos, 80, 1.0f, keepAwake);
+
+        // Add glow effect when active
+        if (keepAwake && anim.glowIntensity > 0) {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImU32 glowColor = IM_COL32(255, 200, 100, (int)(50 * anim.glowIntensity));
+            draw_list->AddCircleFilled(
+                ImVec2(center.x, center.y - 60),
+                100 * anim.pulseScale, glowColor
+            );
+        }
+
+        // Main toggle button
+        ImGui::SetCursorPos(ImVec2(center.x - 60, center.y - 20));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 25.0f);
+
+        // Scale the toggle
+        if (anim.pulseScale != 1.0f) {
+            ImGui::SetWindowFontScale(anim.pulseScale);
+        }
+
+        bool toggleChanged = ImGui::Toggle("##caffeine_toggle", &keepAwake,
+            ImGuiToggleFlags_Animated, ImVec2(120.0f, 60.0f));
+
+        if (anim.pulseScale != 1.0f) {
+            ImGui::SetWindowFontScale(1.0f);
+        }
+
+        ImGui::PopStyleVar();
+
+        // Status text
+        ImGui::SetCursorPos(ImVec2(center.x - 50, center.y + 60));
+        if (keepAwake) {
+            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "PC Staying Awake");
+        }
+        else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sleep Allowed");
+        }
+
+        // Animated message overlay
+        if (anim.isAnimating && anim.fadeAlpha > 0) {
+            ImVec2 messagePos = ImVec2(center.x - 100, center.y + 100);
+            ImGui::SetCursorPos(messagePos);
+
+            if (keepAwake) {
+                // Awake message
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, anim.fadeAlpha));
+                ImGui::Text("Your PC won't sleep!");
+                ImGui::SetCursorPos(ImVec2(messagePos.x + 10, messagePos.y + 25));
+                ImGui::Text("Caffeine is active");
+                ImGui::PopStyleColor();
+            }
+            else {
+                // Sleep message
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 1.0f, anim.fadeAlpha));
+                ImGui::Text("Going to sleep...");
+                ImGui::SetCursorPos(ImVec2(messagePos.x + 20, messagePos.y + 25));
+                ImGui::Text("Sweet dreams!");
+                ImGui::PopStyleColor();
+
+                // Draw sleep particles
+                DrawSleepParticles(center, 100, anim.fadeAlpha);
+            }
+        }
+
+        ImGui::End();
 
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+
+        // Dynamic background color based on state
+        ImVec4 bgColor = keepAwake ?
+            ImVec4(0.05f, 0.08f, 0.02f, 1.0f) :  // Slight green tint when active
+            ImVec4(0.02f, 0.02f, 0.08f, 1.0f);   // Slight blue tint when sleeping
+
+        glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(window);
+        SDL_GL_SwapWindow(ctx.window);
+
+        // TODO: Implement actual sleep prevention logic here
+        // When keepAwake is true, you would call platform-specific APIs to prevent sleep:
+        // - Windows: SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED)
+        // - macOS: IOPMAssertionCreateWiCreateWithName
+        // - Linux: systemd-inhibit or dbus calls
     }
-#ifdef __EMSCRIPTEN__
-    EMSCRIPTEN_MAINLOOP_END;
-#endif
 
     // Cleanup
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppQuit() function]
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_GL_DestroyContext(gl_context);
-    SDL_DestroyWindow(window);
+    SDL_GL_DestroyContext(ctx.context);
+    SDL_DestroyWindow(ctx.window);
     SDL_Quit();
 
     return 0;
