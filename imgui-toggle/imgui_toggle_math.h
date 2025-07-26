@@ -4,8 +4,8 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif // IMGUI_DEFINE_MATH_OPERATORS
-#include "../imgui.h"
-#include "../imgui_internal.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 
 namespace ImGuiToggleMath
 {

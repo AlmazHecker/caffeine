@@ -5,7 +5,7 @@
 #include "imgui_toggle_palette.h"
 #include "imgui_toggle_math.h"
 
-#include "../imgui.h"
+#include "imgui.h"
 
 
 using namespace ImGuiToggleMath;

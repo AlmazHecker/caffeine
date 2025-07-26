@@ -3,7 +3,7 @@
 #endif // IMGUI_DEFINE_MATH_OPERATORS
 
 #include "imgui_toggle.h"
-#include "../imgui.h"
+#include "imgui.h"
 
 #include "imgui_toggle_math.h"
 #include "imgui_toggle_palette.h"

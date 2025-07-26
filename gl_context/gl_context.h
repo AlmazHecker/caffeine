@@ -1,11 +1,11 @@
 #ifndef GL_WINDOW_H
 #define GL_WINDOW_H
 
-#include <SDL3/SDL.h>
+#include <GLFW/glfw3.h>
 
 struct GLWindowContext {
-    SDL_Window* window;
-    SDL_GLContext context;
+    GLFWwindow* window;
+    void* context; // Not used with GLFW, placeholder for compatibility
     const char* glsl_version;
     float scale;
 };
