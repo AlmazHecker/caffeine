@@ -5,7 +5,9 @@
 #include <GLFW/glfw3.h>
 #include "imgui-toggle/imgui_toggle.h"
 #include "gl_context/gl_context.h"
+#include "sleep_prevention/sleep_prevention.h"
 #include <cmath>
+
 
 struct AnimationState {
     float fadeAlpha = 0.0f;
@@ -83,12 +85,12 @@ void DrawSleepParticles(ImVec2 center, float size, float alpha) {
 }
 
 int main() {
-    GLWindowContext ctx = InitGLWindow("Caffeine - Keep PC Awake", 400, 300);
+    GLWindowContext ctx = InitGLWindow("Caffeine - Keep PC Awake", 400, 350);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
     style.ScaleAllSizes(ctx.scale);
@@ -102,11 +104,25 @@ int main() {
 
     bool keepAwake = false;
     AnimationState anim;
+    SleepPrevention sleepPrev;
+
     while (!glfwWindowShouldClose(ctx.window)) {
         glfwPollEvents();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        // Handle sleep prevention toggle
+        static bool lastKeepAwake = false;
+        if (keepAwake != lastKeepAwake) {
+            if (keepAwake) {
+                sleepPrev.enableSleepPrevention();
+            }
+            else {
+                sleepPrev.disableSleepPrevention();
+            }
+            lastKeepAwake = keepAwake;
+        }
 
         if (keepAwake != anim.lastToggleState) {
             anim.isAnimating = true;
@@ -165,13 +181,26 @@ int main() {
         ImGui::PopStyleVar();
 
         ImGui::SetCursorPos(ImVec2(center.x - 50, center.y + 60));
-        if (keepAwake)
+        if (keepAwake) {
             ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "PC Staying Awake");
-        else
+            ImGui::SetCursorPos(ImVec2(center.x - 70, center.y + 80));
+            if (sleepPrev.isActive()) {
+                ImGui::TextColored(ImVec4(0.3f, 0.8f, 0.3f, 1.0f), "Sleep Prevention: Active");
+            }
+            else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Sleep Prevention: Failed");
+            }
+        }
+        else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sleep Allowed");
+        }
+
+        // Platform info
+        ImGui::SetCursorPos(ImVec2(10, windowSize.y - 40));
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Platform: %s", sleepPrev.getPlatformName());
 
         if (anim.isAnimating && anim.fadeAlpha > 0) {
-            ImVec2 messagePos = ImVec2(center.x - 100, center.y + 100);
+            ImVec2 messagePos = ImVec2(center.x - 100, center.y + 120);
             ImGui::SetCursorPos(messagePos);
             if (keepAwake) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, anim.fadeAlpha));
