@@ -4,3 +4,6 @@
 [submodule "imgui-toggle"]
 	path = imgui-toggle
 	url = https://github.com/cmdwtf/imgui_toggle
+[submodule "glfw"]
+	path = glfw
+	url = https://github.com/glfw/glfw.git
