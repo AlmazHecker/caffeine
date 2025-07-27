@@ -37,7 +37,6 @@
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include="CppProperties.json" />
-    <None Include="Makefile" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>

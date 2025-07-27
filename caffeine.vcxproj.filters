@@ -57,10 +57,12 @@
     <ClCompile Include="imgui\backends\imgui_impl_glfw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sleep_prevention\sleep_prevention.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppProperties.json" />
-    <None Include="Makefile" />
     <None Include="README.md" />
     <None Include=".gitignore" />
   </ItemGroup>
@@ -111,6 +113,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui\backends\imgui_impl_glfw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sleep_prevention\sleep_prevention.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

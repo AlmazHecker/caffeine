@@ -14,16 +14,23 @@
 #CXX = g++
 #CXX = clang++
 
-EXE = example_glfw_opengl3
-IMGUI_DIR = ../..
+EXE = build/example_glfw_opengl3
+IMGUI_DIR = ./imgui
+BUILD_DIR = build
 SOURCES = main.cpp
+SOURCES += sleep_prevention/sleep_prevention.cpp
+SOURCES += gl_context/gl_context.cpp
+SOURCES += imgui-toggle/imgui_toggle.cpp
+SOURCES += imgui-toggle/imgui_toggle_palette.cpp
+SOURCES += imgui-toggle/imgui_toggle_presets.cpp
+SOURCES += imgui-toggle/imgui_toggle_renderer.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
-OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
+OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 LINUX_GL_LIBS = -lGL
 
-CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
+CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I./sleep_prevention -I./gl_context -I./imgui-toggle
 CXXFLAGS += -g -Wall -Wformat
 LIBS =
 
@@ -70,20 +77,43 @@ endif
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-%.o:%.cpp
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/%.cpp
+$(BUILD_DIR)/%.o: $(IMGUI_DIR)/%.cpp
+	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/backends/%.cpp
+$(BUILD_DIR)/%.o: $(IMGUI_DIR)/backends/%.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: sleep_prevention/%.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: gl_context/%.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: imgui-toggle/%.cpp
+	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)
 	@echo Build complete for $(ECHO_MESSAGE)
 
 $(EXE): $(OBJS)
+	@mkdir -p $(BUILD_DIR)
+ifeq ($(OS), Windows_NT)
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS) -mwindows
+	@cp glfw-3.4.bin.WIN64/lib-mingw-w64/glfw3.dll $(BUILD_DIR)/
+	@echo "Copied glfw3.dll to build directory"
+else
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
+endif
+
 
 clean:
-	rm -f $(EXE) $(OBJS)
+	rm -rf $(BUILD_DIR)
