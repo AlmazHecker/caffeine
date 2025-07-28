@@ -1,2 +1,8 @@
-TODO: To make Makefile fully self-contained GLFW needs to be added as git submodule instead of WIN64 binary.
-TODO: Migrate from MSBuild to full Makefile.
+To build the app:
+
+* Install a compiler (GCC, Clang, etc.), make, and cmake.
+* Clone the repository.
+* Open a terminal at the project root.
+* Run `make all`.
+
+Output binary will be in `./build` directory.
