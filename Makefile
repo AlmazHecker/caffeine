@@ -95,6 +95,7 @@ $(GLFW_LIB): | check_glfw_source
 		-DGLFW_INSTALL=OFF \
 		-DBUILD_SHARED_LIBS=OFF \
 		-DGLFW_BUILD_SHARED_LIBS=OFF
+	@cmake --build $(GLFW_BUILD_DIR)
 	@echo "GLFW build complete"
 
 check_glfw_source:
