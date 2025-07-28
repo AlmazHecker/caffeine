@@ -43,13 +43,8 @@ GLWindowContext InitGLWindow(const char* title, int width, int height) {
     glfwGetWindowContentScale(win, &scale_x, &scale_y);
     float scale = (scale_x + scale_y) * 0.5f;
     
-    // For high-DPI displays, make the window larger so content is visible
-    // Scale should be at least 1.5 for good visibility on high-DPI screens
-    // if (scale < 1.5f) {
     scale = 1.9f;  // Minimum scaling for readability
-    // }
     
-    // Resize window to account for high DPI
     int scaled_width = static_cast<int>(width * scale);
     int scaled_height = static_cast<int>(height * scale);
     glfwSetWindowSize(win, scaled_width, scaled_height);
